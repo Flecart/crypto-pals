@@ -45,6 +45,11 @@ def score_by_simple_euristics():
     for i in range(26):
         t[english[25 - i]] = i
         t[english[25 - i].lower()] = i
+
+    # some common stuff, hope it helps to change
+    t["'"] = 7
+    t['.'] = 7
+    t[" "] = 20
     return t 
 
 def score_by_frequency():
@@ -87,10 +92,9 @@ def score_by_frequency():
     }
     return t
 
-def generate_scoring_table():
+def generate_scoring_table(func = score_by_simple_euristics):
     global table
-    table = score_by_simple_euristics()
-    print(table)
+    table = func()
     return table 
 
 
@@ -101,24 +105,27 @@ def get_score(inp: str):
     for ch in inp:
         if ch in score_table:
             final_score += score_table[ch]
+        else:
+            final_score -= 40 # cerchiamo di scoraggiare cose che non ci sono nella table, quindi principalmente parole
     return final_score
 
-def frequency_attack(inp):
-    results = [] # index for key to try, and value ok?
+
+def frequency_attack(inp, n_keys: int = 2):
+    results = {} # index for key to try, and value ok?
     for i in range(256):
         try:
             message = bytes.fromhex(decrypt(inp, i)).decode()
-            results.append(get_score(message))
+            results[i] = get_score(message)
         except UnicodeDecodeError:
-            results.append(0)
             continue
-    
-    highest_score = max(results)
-    index = 0
-    for k in results: # could be multiple with same score
-        if k == highest_score and highest_score > 0:
-            print(bytes.fromhex(decrypt(inp, key=index)))
-        index += 1
 
-frequency_attack(inp)
+    print([x for x in reversed(sorted(results.items(), key=lambda item: item[1]))])
+    return [key for key, _ in reversed(sorted(results.items(), key=lambda item: item[1]))][:n_keys]
+
+
+def show_results(inp, keys):
+    for key in keys:
+        print(bytes.fromhex(decrypt(inp, key)))
+
+show_results(inp, frequency_attack(inp))
     
