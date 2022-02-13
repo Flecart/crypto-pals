@@ -1,14 +1,10 @@
-coded = None 
-DEBUG = True 
+DEBUG = None
+
 def get_file():
     from base64 import b64decode
-
     with open("6_chal.data", "r") as f:
-        data = f.read() 
-
-    global coded
-    coded = b64decode(data)
-    return coded 
+        data = f.read().strip()
+    return b64decode(data) 
 
 
 def hamming_distance(first, second):
@@ -31,27 +27,26 @@ def test_hamming():
     print(hamming_distance(a, b))
 
 
-def key_size_value(keysize: int, bytes_checked = 1):
+def key_size_value(ciphertext, keysize: int, bytes_checked = 1):
     assert(keysize > 0 and bytes_checked > 0)
-    ciphertext = coded if coded else get_file() 
     # distance between first and second keysize of bytes
     distance = 0
-    for i in range(bytes_checked):
-        start_offset = i * keysize 
-        # distance like this a[i:i+k], a[i+k:i+2k]
-        distance += hamming_distance(ciphertext[start_offset : start_offset + keysize], ciphertext[start_offset + keysize: start_offset + 2*keysize])
-    return distance / (keysize * bytes_checked)
+    n_blocks = int(len(ciphertext) / keysize)
+    for i in range(n_blocks):
+        distance += hamming_distance(ciphertext[i : i + keysize], ciphertext[i + keysize: i + 2*keysize])
+    return distance / (n_blocks * keysize)
 
 
-def find_key_size(n_keep: int):
+def find_key_size(ciphertext, n_keep: int):
     results = {} 
 
     for i in range(2, 40):
-        results[i] = key_size_value(i)
+        results[i] = key_size_value(ciphertext, i)
 
     if DEBUG: print("found keys, with scores: ", [x for x in sorted(results.items(), key = lambda item: item[1])][:n_keep * 2])
 
     return [x[0] for x in sorted(results.items(), key = lambda item: item[1])][:n_keep]
+
 
 def break_ciphertext(ciphertext, keysize: int):
     """
@@ -77,51 +72,39 @@ def test_break_ciphertext():
     assert(twoos == [b"ac"*4, b"bd"*4])
 
 
-def decrypt_vigenere(ciphertex, key):
+def decrypt_vigenere(ciphertext, key):
     out = b''
     index = 0
-    for ch in ciphertex:
+    for ch in ciphertext:
         out += bytes([ch ^ key[index]])
-        index += 1
-        index %= len(key)
+        index = (index + 1) % len(key)
 
     return out
 
+
 def attack_vigenere():
-    from single_byte_xor_cipher import frequency_attack, key_bruteforce
-    ciphertext = coded if coded else get_file()
-    key_sizes = find_key_size(3) 
+    from single_byte_xor_cipher import frequency_attack
+    ciphertext = get_file()
+    key_sizes = find_key_size(ciphertext, 1) 
     for keysize in key_sizes:
         print("Currently trying to break the cipher with keysize:", keysize)
         print("##########################################################")
         breaked_ciph = break_ciphertext(ciphertext, keysize)
         key = b''
+
         for cipher in breaked_ciph:
-            print("\nLooking for the best one in here:")
-            # key_bruteforce(cipher.hex())
-            current_key = frequency_attack(cipher.hex(), 5)
-            for k in current_key:
-                print(decrypt_vigenere(cipher, bytes([k])))
-                # key += bytes(frequency_attack(cipher.hex(), 1))
-            return
-        # print("Key found is ", key)
-        # print(decrypt_vigenere(ciphertext, key))
+            key += bytes(frequency_attack(cipher.hex(), 1))
 
-def mini_tests():
-    from single_byte_xor_cipher import frequency_attack
-    ciphertext = coded if coded else get_file()
-    for keysize in [3]:
-        print("Currently trying to break the cipher with keysize:", keysize)
-        print("##########################################################")
-        breaked_ciph = break_ciphertext(ciphertext, keysize)
-        for cipher in breaked_ciph:
-            print("\nLooking for the best one in here:")
-            current_key = frequency_attack(cipher.hex(), 5)
-            for k in current_key:
-                print(decrypt_vigenere(cipher, bytes([k])))
-            return
+        print("Key found is ", key)
 
-# test_break_ciphertext()
-mini_tests()
+        try:
+            print(decrypt_vigenere(ciphertext, key).decode())
+        except:
+            print(decrypt_vigenere(ciphertext, key))
 
-# print(break_ciphertext(b"wattafuck you boy?", 3))
+
+def main():
+    attack_vigenere()
+
+if __name__ == "__main__":
+    main()
