@@ -35,17 +35,24 @@ def interactive_decrypt(inp, n=3):
 # THIS ONE DOWN HERE IS THE IMPLEMENTED
 # FREQ ATTACK!
 from collections import Counter 
-table = None
 
 def score_by_simple_euristics():
-    """This is just simple euristics to generate the frequency analisis stuff"""
+    """
+    This is just simple euristics to generate the frequency analisis stuff
+    It works fine, as well as entropy thing lol!
+    """
     english = "EARIOTNSLCUDPMGHBFYWKVXZJQ"
     t = {}
     # E = 26, A = 25 etc...
     for i in range(26):
         t[english[25 - i]] = i
         t[english[25 - i].lower()] = i
-    return t 
+
+    # some common stuff, hope it helps to change
+    punteggiatura = [" ", ".", ",", "'"]
+    for i in punteggiatura:
+        t[i] = 10
+    return t
 
 def score_by_frequency():
     """I'm assigning the values based on the frequency of the single letters
@@ -69,56 +76,59 @@ def score_by_frequency():
         "C":	4.5388,		"X":	0.2902,	
         "U":	3.6308,		"Z":	0.2722,	
         "D":	3.3844,		"J":	0.1965,	
-        "P":	3.1671,		"Q":	0.1962,	
-        # lowercase
-        "e":	11.607,		"m":	3.0129,	
-        "a":	8.4966,		"h":	3.0034,	
-        "r":	7.5809,		"g":	2.4705,	
-        "i":	7.5448,		"b":	2.0720,	
-        "o":	7.1635,		"f":	1.8121,	
-        "t":	6.9509,		"y":	1.7779,	
-        "n":	6.6544,		"w":	1.2899,	
-        "s":	5.7351,		"k":	1.1016,	
-        "l":	5.4893,		"v":	1.0074,	
-        "c":	4.5388,		"x":	0.2902,	
-        "u":	3.6308,		"z":	0.2722,	
-        "d":	3.3844,		"j":	0.1965,	
-        "p":	3.1671,		"q":	0.1962,	
+        "P":	3.1671,		"Q":	0.1962,
     }
+
+    # adding some + value for punti
+    punteggiatura = [" ", ".", ",", "'"]
+    for i in punteggiatura:
+        t[i] = 2
     return t
 
-def generate_scoring_table():
-    global table
-    table = score_by_simple_euristics()
-    print(table)
-    return table 
+def generate_scoring_table(func = score_by_simple_euristics):
+    return func() 
 
+def general_get_score(plaintext: str, get_score_table, scorer):
+    plaintext = plaintext.upper()
 
-def get_score(inp: str):
-    # inp is not hex! is valid plaintext stuff here
-    score_table = table if table else generate_scoring_table()
+    score_table = get_score_table()
     final_score = 0
-    for ch in inp:
+    counter = Counter(plaintext)
+    total = counter.total()
+
+    for ch in plaintext:
         if ch in score_table:
-            final_score += score_table[ch]
+            final_score += scorer(score_table[ch], counter[ch] / total)
+
     return final_score
 
-def frequency_attack(inp):
-    results = [] # index for key to try, and value ok?
+
+def get_entropy_score(inp: str):
+    from math import log2
+    return general_get_score(inp, score_by_frequency, lambda freq, prob: freq * log2(1/prob))
+
+
+def get_euristics_score(inp: str):
+    return general_get_score(inp, score_by_simple_euristics, lambda freq, _: freq)
+
+
+def frequency_attack(inp, n_keys: int = 2, get_score = get_euristics_score):
+    results = {} # index for key to try, and value ok?
     for i in range(256):
         try:
             message = bytes.fromhex(decrypt(inp, i)).decode()
-            results.append(get_score(message))
+            results[i] = get_score(message)
         except UnicodeDecodeError:
-            results.append(0)
             continue
-    
-    highest_score = max(results)
-    index = 0
-    for k in results: # could be multiple with same score
-        if k == highest_score and highest_score > 0:
-            print(bytes.fromhex(decrypt(inp, key=index)))
-        index += 1
 
-frequency_attack(inp)
+    print([x for x in reversed(sorted(results.items(), key=lambda item: item[1]))][:n_keys * 3])
+    return [key for key, _ in reversed(sorted(results.items(), key=lambda item: item[1]))][:n_keys]
+
+
+def show_results(inp, keys):
+    for key in keys:
+        print(bytes.fromhex(decrypt(inp, key)))
+
+if __name__ == "__main__":
+    show_results(inp, frequency_attack(inp))
     
