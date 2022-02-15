@@ -4,3 +4,4 @@ __pycache__/
 Cargo.lock
 *.swp
 target/
+env_crypto
