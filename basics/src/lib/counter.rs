@@ -6,6 +6,7 @@ pub struct Counter<'a, T> {
 }
 
 impl<'a, T: std::cmp::Eq + std::hash::Hash> Counter<'a, T> {
+    #[allow(dead_code)]
     pub fn new() -> Counter<'a, T> {
         Counter {
             counter: HashMap::new(),
@@ -33,6 +34,10 @@ impl<'a, T: std::cmp::Eq + std::hash::Hash> Counter<'a, T> {
             Some(value) => Ok(value.clone()),
             None => Err("This key does not exist")
         }
+    }
+
+    pub fn total(&self) -> i32 {
+        self.total
     }
 }
 

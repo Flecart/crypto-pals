@@ -1,9 +1,13 @@
 extern crate base64;
 extern crate hex;
 use std::u8;
+use std::str;
 
 use std::collections::HashMap;
-mod counter;
+pub mod counter;
+
+#[cfg(test)]
+mod tests;
 
 pub fn hex_to_base64(hex: String) -> Result<String, hex::FromHexError> {
     let result = hex::decode(&hex);
@@ -42,12 +46,11 @@ pub fn xor_hex(first: String, second: String) -> Result<String, &'static str>  {
     Ok(hex::encode(xored))
 }
 
-pub fn xor_single_key(plaintext: String, key: u8) -> Vec<u8> {
-    let bytes = plaintext.into_bytes();
+pub fn xor_single_key(plaintext: &Vec<u8>, key: u8) -> Vec<u8> {
     let mut result = Vec::new();
 
-    for i in 0..bytes.len() {
-        result.push(bytes[i] ^ key)
+    for i in 0..plaintext.len() {
+        result.push(plaintext[i] ^ key);
     }
     result 
 }
@@ -78,68 +81,51 @@ pub fn get_frequency_table() -> HashMap<&'static str, f64> {
 }
 
 
-pub fn frequency_attack(ciphertext: String) -> u8 {
+pub fn frequency_attack(ciphertext: &Vec<u8>) -> u8 {
     let mut scores: [f64; 256] = [0.0; 256];
-
     for i in 0..=255 {
-        let plaintext = xor_single_key(ciphertext.to_string(), i.clone());
-        scores[i as usize] = get_score(plaintext);
+        let plaintext = xor_single_key(&ciphertext, i.clone());
+        scores[i as usize] = get_score(&plaintext);
     }
-    0 // TODO: scegli il migliore fra gli score
+    
+    let mut max = -1.0;
+    let mut index = 0;
+    scores.iter().enumerate().for_each(|(i, value)| {
+        if *value > max {
+            max = *value;
+            index = i;
+        }
+    });
+    index as u8
 }
 
-pub fn get_score(maybe_plaintext: Vec<u8>) -> f64 {
-    // use counter::Counter;
-    // let table = get_frequency_table();
-    // let counter: Counter<u8> = Counter::from(&maybe_plaintext);
+pub fn get_score(maybe_plaintext: &Vec<u8>) -> f64 {
+    // TODO: make this return Result, with error enum that has entries for the table and utf8
+    use counter::Counter;
+    let table = get_frequency_table();
+    let counter: Counter<u8> = Counter::from(&maybe_plaintext);
 
-    // let mut score = 0;
-    // for byte in maybe_plaintext {
-    //     let ch = 
-    //     score += 
-    // }
-    2.0
-}
+    let mut score: f64 = 0.0;
+    for byte in maybe_plaintext.clone() {
+        let uppercase = [byte.to_ascii_uppercase()];
+        match str::from_utf8(&uppercase) {
+            Ok(ch) => {
+                match table.get(ch.clone()) {
+                    Some(value) => {
+                        // println!("total: {}, count: {}", counter.total(), counter.get(&byte).unwrap());
 
-
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn xor_single_key() {
-        use hex;
-        let input = "Sono un testo per testare il funzionamento";
-        let bytes = super::xor_single_key(input.to_string(), 10);
-        println!("{}", hex::encode(&bytes));
-        assert!("596564652a7f642a7e6f797e652a7a6f782a7e6f797e6b786f2a63662a6c7f64706365646b676f647e65".eq(&hex::encode(&bytes)))
-    }
-    
-    #[test]
-    fn hex_to_base64() {
-        use super::hex_to_base64;
-    
-        let input = "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d";
-        println!("{}", hex_to_base64(input.to_string()).unwrap());
-    }
-    
-    #[test]
-    fn xor_hex() {
-        let a = "1c0111001f010100061a024b53535009181c";
-        let b = "686974207468652062756c6c277320657965";
-    
-        let test = "746865206b696420646f6e277420706c6179";
-    
-        let ouput = super::xor_hex(a.to_string(), b.to_string()).unwrap();
-        println!("{}", ouput);
-        assert!(test.eq(&ouput));
+                        let shannons = (counter.total() as f64) / (counter.get(&byte).unwrap() as f64);
+                        score += value * shannons.log2();
+                    },
+                    None => {// do nothing
+                    },
+                }
+            },
+            Err(_) => { // just skip it 
+            },
+        }
+        
     }
 
-    #[test]
-    fn char_str_in_freqtable() {
-        let table = super::get_frequency_table();
-        let character: u8 = 97u8;
-
-        let freq = table.get(character.make_ascii_uppercase().to_string());
-        println!("{}", freq);
-    }
+    score 
 }
