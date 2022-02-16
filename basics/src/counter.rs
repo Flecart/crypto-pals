@@ -5,7 +5,7 @@ pub struct Counter<'a, T> {
     total: i32,
 }
 
-impl<'a, T> Counter<'a, T> {
+impl<'a, T: std::cmp::Eq + std::hash::Hash> Counter<'a, T> {
     pub fn new() -> Counter<'a, T> {
         Counter {
             counter: HashMap::new(),
@@ -13,7 +13,7 @@ impl<'a, T> Counter<'a, T> {
         }
     }
 
-    pub fn from(input: &Vec<T>) -> Counter<'a, T> {
+    pub fn from(input: &'a Vec<T>) -> Counter<'a, T> {
         let mut table = HashMap::new();
         let mut total: i32 = 0;
         for ch in input {
@@ -25,6 +25,13 @@ impl<'a, T> Counter<'a, T> {
         Counter {
             counter: table,
             total: total,
+        }
+    }
+
+    pub fn get(&self, key: &T) -> Result<i32, &'static str> {
+        match self.counter.get(&key) {
+            Some(value) => Ok(value.clone()),
+            None => Err("This key does not exist")
         }
     }
 }

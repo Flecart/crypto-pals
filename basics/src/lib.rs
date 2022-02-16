@@ -79,24 +79,25 @@ pub fn get_frequency_table() -> HashMap<&'static str, f64> {
 
 
 pub fn frequency_attack(ciphertext: String) -> u8 {
-    let mut scores: [f64; 256];
+    let mut scores: [f64; 256] = [0.0; 256];
 
-    for i in 0..256 {
-        let plaintext = xor_single_key(ciphertext, i);
-        scores[i] = get_score(plaintext); // TODO: solve index error
+    for i in 0..=255 {
+        let plaintext = xor_single_key(ciphertext.to_string(), i.clone());
+        scores[i as usize] = get_score(plaintext);
     }
     0 // TODO: scegli il migliore fra gli score
 }
 
 pub fn get_score(maybe_plaintext: Vec<u8>) -> f64 {
-    use counter::Counter;
-    let table = get_frequency_table();
-    let counter: Counter<u8> = Counter::from(&maybe_plaintext);
+    // use counter::Counter;
+    // let table = get_frequency_table();
+    // let counter: Counter<u8> = Counter::from(&maybe_plaintext);
 
-    let mut score = 0;
-    for byte in maybe_plaintext {
-        // TODO
-    }
+    // let mut score = 0;
+    // for byte in maybe_plaintext {
+    //     let ch = 
+    //     score += 
+    // }
     2.0
 }
 
@@ -138,7 +139,7 @@ mod tests {
         let table = super::get_frequency_table();
         let character: u8 = 97u8;
 
-        let freq = table.get(character.make_ascii_uppercase());
+        let freq = table.get(character.make_ascii_uppercase().to_string());
         println!("{}", freq);
     }
 }
