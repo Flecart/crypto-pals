@@ -81,7 +81,8 @@ pub fn get_frequency_table() -> HashMap<&'static str, f64> {
 }
 
 
-pub fn frequency_attack(ciphertext: &Vec<u8>) -> u8 {
+pub fn frequency_attack(ciphertext: &Vec<u8>) -> (u8, f64) {
+    // TODO: make a struct for this return type, so it has better meaning
     let mut scores: [f64; 256] = [0.0; 256];
     for i in 0..=255 {
         let plaintext = xor_single_key(&ciphertext, i.clone());
@@ -96,7 +97,7 @@ pub fn frequency_attack(ciphertext: &Vec<u8>) -> u8 {
             index = i;
         }
     });
-    index as u8
+    (index as u8, max as f64)
 }
 
 pub fn get_score(maybe_plaintext: &Vec<u8>) -> f64 {
@@ -106,25 +107,14 @@ pub fn get_score(maybe_plaintext: &Vec<u8>) -> f64 {
     let counter: Counter<u8> = Counter::from(&maybe_plaintext);
 
     let mut score: f64 = 0.0;
-    for byte in maybe_plaintext.clone() {
+    for byte in maybe_plaintext {
         let uppercase = [byte.to_ascii_uppercase()];
-        match str::from_utf8(&uppercase) {
-            Ok(ch) => {
-                match table.get(ch.clone()) {
-                    Some(value) => {
-                        // println!("total: {}, count: {}", counter.total(), counter.get(&byte).unwrap());
-
-                        let shannons = (counter.total() as f64) / (counter.get(&byte).unwrap() as f64);
-                        score += value * shannons.log2();
-                    },
-                    None => {// do nothing
-                    },
-                }
-            },
-            Err(_) => { // just skip it 
-            },
+        if let Ok(ch) = str::from_utf8(&uppercase){
+            if let Some(value) = table.get(ch.clone()) {
+                let shannons = (counter.total() as f64) / (counter.get(&byte).unwrap() as f64);
+                score += value * shannons.log2();
+            }
         }
-        
     }
 
     score 

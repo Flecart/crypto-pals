@@ -66,3 +66,15 @@ fn counter() {
     assert!(c.get(&2).unwrap() == 2);
     assert!(c.get(&3).unwrap() == 1);
 }
+
+#[test]
+fn freq_attack() {
+    let text = "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736";
+    let bytes = hex::decode(text).unwrap();
+    let key = super::frequency_attack(&bytes).0;
+
+    let plaintext_bytes = super::xor_single_key(&bytes, key);
+    let plaintext = std::str::from_utf8(&plaintext_bytes).unwrap();
+    println!("Text: {}", plaintext.to_string());
+    assert_eq!(plaintext, "Cooking MC's like a pound of bacon");
+}
