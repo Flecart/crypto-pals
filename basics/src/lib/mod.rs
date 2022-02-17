@@ -55,6 +55,15 @@ pub fn xor_single_key(plaintext: &Vec<u8>, key: u8) -> Vec<u8> {
     result 
 }
 
+pub fn xor_mul_keys(plaintext: &Vec<u8>, key: &Vec<u8>) -> Vec<u8> {
+    let mut result = Vec::new();
+
+    for i in 0..plaintext.len() {
+        result.push(plaintext[i] ^ key[i % key.len()]);
+    }
+    result 
+}
+
 pub fn get_frequency_table() -> HashMap<&'static str, f64> {
     // https://www3.nd.edu/~busiforc/handouts/cryptography/letterfrequencies.html
     let mut hm = HashMap::from([

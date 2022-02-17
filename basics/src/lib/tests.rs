@@ -1,5 +1,14 @@
 
 
+use std::fs::File;
+use std::io::{self, BufRead};
+use std::path::Path;
+
+fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
+where P: AsRef<Path>, {
+    let file = File::open(filename)?;
+    Ok(io::BufReader::new(file).lines())
+}
 
 #[test]
 fn xor_single_key() {
@@ -77,4 +86,45 @@ fn freq_attack() {
     let plaintext = std::str::from_utf8(&plaintext_bytes).unwrap();
     println!("Text: {}", plaintext.to_string());
     assert_eq!(plaintext, "Cooking MC's like a pound of bacon");
+}
+
+#[test]
+fn detect_single_key() {
+    use std::time::Instant;
+    let now = Instant::now();
+    
+    let mut string: Vec<u8> = Vec::new();
+    let mut best_score: (u8, f64) = (0, 0.0);
+    if let Ok(lines) = read_lines("./4_chal.data") {
+        for line_res in lines {
+            if let Ok(line) = line_res {
+                let bytes = hex::decode(line).unwrap();
+                let score = super::frequency_attack(&bytes);
+                if score.1 > best_score.1 {
+                    best_score = score.clone();
+                    string = bytes.clone();
+                }
+            }
+        }
+    }
+
+    let plaintext_bytes = super::xor_single_key(&string, best_score.0);
+    let plaintext = std::str::from_utf8(&plaintext_bytes).unwrap();
+    println!("Text: {}", plaintext.to_string());
+    assert_eq!("Now that the party is jumping\n", plaintext);
+    
+    let elapsed = now.elapsed();
+    println!("Elapsed: {:.2?}", elapsed);
+}
+
+#[test]
+fn xor_mul_keys() {
+    let input = "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal";
+    let test = "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f";
+
+    let input_bytes = input.to_string().into_bytes();
+    let key: Vec<u8> = vec![b'I', b'C', b'E'];
+    let output = super::xor_mul_keys(&input_bytes, &key);
+    let output_hex = hex::encode(&output);
+    assert_eq!(output_hex, test);
 }
