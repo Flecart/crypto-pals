@@ -128,3 +128,16 @@ pub fn get_score(maybe_plaintext: &Vec<u8>) -> f64 {
 
     score 
 }
+
+pub fn hamming_distance(first: &Vec<u8>, second: &Vec<u8>) -> Result<u32, &'static str> {
+    if first.len() != second.len() {
+        return Err("The two vector of bytes should have same lenght");
+    }
+    let len = first.len();
+    let mut distance = 0;
+    for i in 0..len {
+        distance += (first[i] ^ second[i]).count_ones();
+    }
+    Ok(distance)
+}
+

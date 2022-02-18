@@ -128,3 +128,12 @@ fn xor_mul_keys() {
     let output_hex = hex::encode(&output);
     assert_eq!(output_hex, test);
 }
+
+#[test]
+fn hamming_distance() {
+    let first = "this is a test".to_string();
+    let second = "wokka wokka!!!".to_string();
+
+    let hd = super::hamming_distance(&first.into_bytes(), &second.into_bytes()).unwrap();
+    assert_eq!(hd, 37);
+}
